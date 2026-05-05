@@ -1,28 +1,23 @@
 import streamlit as st
 import random
 import pandas as pd
+from io import BytesIO
 
 st.set_page_config(page_title="Optimasi Jadwal Multi-Cabang", layout="wide")
 
 st.title("Sistem Penjadwalan Kerja WSS - Edisi Multi-Cabang")
 st.write("Sesuaikan daftar karyawan sesuai cabang penelitian Anda.")
 
-# --- SIDEBAR INPUT (Agar User Friendly) ---
+# --- SIDEBAR INPUT ---
 st.sidebar.header("Konfigurasi Cabang")
-
-# Input Nama PJ (Pemisah koma)
 input_pj = st.sidebar.text_area("Daftar Nama PJ (Pisahkan dengan koma)", "Indah, Andri")
-# Input Nama Staf (Pemisah koma)
 input_staf = st.sidebar.text_area("Daftar Nama Staf (Pisahkan dengan koma)", "Tika, Firman, Elan, Nila, Novi, Alfi")
 
-# Konversi input teks ke List
-LIST_PJ = [x.strip() for x in input_pj.split(",")]
-LIST_STAF = [x.strip() for x in input_staf.split(",")]
+LIST_PJ = [x.strip() for x in input_pj.split(",") if x.strip()]
+LIST_STAF = [x.strip() for x in input_staf.split(",") if x.strip()]
 SEMUA_STAF = LIST_PJ + LIST_STAF
 
 st.sidebar.info(f"Total Karyawan: {len(SEMUA_STAF)} orang")
-
-# Konfigurasi Shift
 SHIFT = ['Pagi', 'Siang', 'Break']
 JUMLAH_HARI = 30
 
@@ -44,7 +39,6 @@ def buat_jadwal_acak():
         harian = {}
         staf_tersedia = SEMUA_STAF.copy()
         random.shuffle(staf_tersedia)
-        # Pembagian dinamis berdasarkan jumlah karyawan yang ada
         for i, nama in enumerate(staf_tersedia):
             harian[nama] = SHIFT[i % 3]
         jadwal_sebulan.append(harian)
@@ -53,14 +47,13 @@ def buat_jadwal_acak():
 # --- TAMPILAN UTAMA ---
 if st.button('Generate Jadwal Cabang Ini'):
     if len(SEMUA_STAF) < 3:
-        st.error("Minimal harus ada 3 karyawan untuk menjalankan sistem.")
+        st.error("Minimal harus ada 3 karyawan!")
     else:
         with st.spinner('Menghitung optimasi...'):
             populasi = [buat_jadwal_acak() for _ in range(20)]
             for g in range(50):
                 populasi = sorted(populasi, key=lambda x: hitung_fitness(x), reverse=True)
                 terbaik = populasi[:5]
-                # Mutasi
                 induk = random.choice(terbaik)
                 anak = [hari.copy() for hari in induk]
                 populasi = terbaik + [anak]
@@ -69,8 +62,20 @@ if st.button('Generate Jadwal Cabang Ini'):
             df = pd.DataFrame(hasil).T
             df.columns = [f'H{i+1}' for i in range(JUMLAH_HARI)]
             
-            st.success(f"Berhasil membuat jadwal untuk {len(SEMUA_STAF)} karyawan!")
+            st.success(f"Berhasil membuat jadwal!")
             st.dataframe(df)
+
+            # --- FITUR DOWNLOAD EXCEL RAPI ---
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                df.to_excel(writer, sheet_name='Jadwal_Shift')
+            
+            st.download_button(
+                label="📥 Download Jadwal Versi Excel Rapi",
+                data=output.getvalue(),
+                file_name=f"Jadwal_Shift_WSS_{len(SEMUA_STAF)}_Orang.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
 
             st.subheader("Audit Jatah Break")
             rekap = {n: list(df.loc[n]).count('Break') for n in SEMUA_STAF}
