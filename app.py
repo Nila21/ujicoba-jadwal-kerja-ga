@@ -2,92 +2,76 @@ import streamlit as st
 import random
 import pandas as pd
 
-st.set_page_config(page_title="Penjadwalan WSS Dawuhan", layout="wide")
+st.set_page_config(page_title="Optimasi Jadwal Multi-Cabang", layout="wide")
 
-st.title("Sistem Penjadwalan Shift WSS Dawuhan")
-st.write("Prototipe Optimasi Jadwal Kerja menggunakan Algoritma Genetika")
+st.title("Sistem Penjadwalan Kerja WSS - Edisi Multi-Cabang")
+st.write("Sesuaikan daftar karyawan sesuai cabang penelitian Anda.")
 
-# 1. KONFIGURASI DATA
-KARYAWAN = {
-    'PJ': ['Indah', 'Andri'],
-    'STAF': ['Tika', 'Firman', 'Elan', 'Nila', 'Novi', 'Alfi']
-}
-SEMUA_STAF = KARYAWAN['PJ'] + KARYAWAN['STAF']
+# --- SIDEBAR INPUT (Agar User Friendly) ---
+st.sidebar.header("Konfigurasi Cabang")
+
+# Input Nama PJ (Pemisah koma)
+input_pj = st.sidebar.text_area("Daftar Nama PJ (Pisahkan dengan koma)", "Indah, Andri")
+# Input Nama Staf (Pemisah koma)
+input_staf = st.sidebar.text_area("Daftar Nama Staf (Pisahkan dengan koma)", "Tika, Firman, Elan, Nila, Novi, Alfi")
+
+# Konversi input teks ke List
+LIST_PJ = [x.strip() for x in input_pj.split(",")]
+LIST_STAF = [x.strip() for x in input_staf.split(",")]
+SEMUA_STAF = LIST_PJ + LIST_STAF
+
+st.sidebar.info(f"Total Karyawan: {len(SEMUA_STAF)} orang")
+
+# Konfigurasi Shift
 SHIFT = ['Pagi', 'Siang', 'Break']
 JUMLAH_HARI = 30
 
-# 2. FUNGSI CEK ATURAN (FITNESS)
+# --- LOGIKA ALGORITMA ---
 def hitung_fitness(jadwal):
     penalti = 0
     for hari in range(JUMLAH_HARI):
         data_hari = jadwal[hari]
-        is_minggu = (hari + 1) % 7 == 0
-        
         for s in SHIFT:
             petugas_shift = [nama for nama, shf in data_hari.items() if shf == s]
-            pj_di_shift = [p for p in petugas_shift if p in KARYAWAN['PJ']]
+            pj_di_shift = [p for p in petugas_shift if p in LIST_PJ]
             if len(pj_di_shift) < 1:
                 penalti += 100 
-        
-        siapa_libur = [nama for nama, shf in data_hari.items() if shf == 'Libur']
-        if is_minggu:
-            if len(siapa_libur) > 0: penalti += 50
-        else:
-            if len(siapa_libur) > 1: penalti += 20
-            
-    for hari in range(JUMLAH_HARI - 1):
-        for nama in SEMUA_STAF:
-            shift_skrg = jadwal[hari][nama]
-            shift_besok = jadwal[hari+1][nama]
-            if shift_skrg == 'Break' and shift_besok == 'Pagi':
-                penalti += 10
-                
     return 1 / (1 + penalti)
 
-# 3. MEMBUAT JADWAL ACAK
 def buat_jadwal_acak():
     jadwal_sebulan = []
     for hari in range(JUMLAH_HARI):
-        is_minggu = (hari + 1) % 7 == 0
         harian = {}
         staf_tersedia = SEMUA_STAF.copy()
         random.shuffle(staf_tersedia)
-        if is_minggu:
-            for i, nama in enumerate(staf_tersedia):
-                harian[nama] = SHIFT[i % 3]
-        else:
-            harian[staf_tersedia[0]] = 'Libur'
-            for i, nama in enumerate(staf_tersedia[1:]):
-                harian[nama] = SHIFT[i % 3]
+        # Pembagian dinamis berdasarkan jumlah karyawan yang ada
+        for i, nama in enumerate(staf_tersedia):
+            harian[nama] = SHIFT[i % 3]
         jadwal_sebulan.append(harian)
     return jadwal_sebulan
 
-# 4. PROSES OPTIMASI
-if st.button('Generate Jadwal WSS'):
-    with st.spinner('Menghitung kombinasi jadwal terbaik...'):
-        populasi = [buat_jadwal_acak() for _ in range(20)]
-        generasi = 100
-        for g in range(generasi):
-            populasi = sorted(populasi, key=lambda x: hitung_fitness(x), reverse=True)
-            terbaik = populasi[:5]
-            anak_baru = []
-            for _ in range(15):
+# --- TAMPILAN UTAMA ---
+if st.button('Generate Jadwal Cabang Ini'):
+    if len(SEMUA_STAF) < 3:
+        st.error("Minimal harus ada 3 karyawan untuk menjalankan sistem.")
+    else:
+        with st.spinner('Menghitung optimasi...'):
+            populasi = [buat_jadwal_acak() for _ in range(20)]
+            for g in range(50):
+                populasi = sorted(populasi, key=lambda x: hitung_fitness(x), reverse=True)
+                terbaik = populasi[:5]
+                # Mutasi
                 induk = random.choice(terbaik)
                 anak = [hari.copy() for hari in induk]
-                h = random.randint(0, JUMLAH_HARI-1)
-                k1, k2 = random.sample(SEMUA_STAF, 2)
-                anak[h][k1], anak[h][k2] = anak[h][k2], anak[h][k1]
-                anak_baru.append(anak)
-            populasi = terbaik + anak_baru
-        
-        hasil = populasi[0]
-        df = pd.DataFrame(hasil).T
-        df.columns = [f'Hr {i+1}' for i in range(JUMLAH_HARI)]
-        
-        st.success("Berhasil! Berikut adalah jadwal optimal:")
-        st.dataframe(df)
+                populasi = terbaik + [anak]
+            
+            hasil = populasi[0]
+            df = pd.DataFrame(hasil).T
+            df.columns = [f'H{i+1}' for i in range(JUMLAH_HARI)]
+            
+            st.success(f"Berhasil membuat jadwal untuk {len(SEMUA_STAF)} karyawan!")
+            st.dataframe(df)
 
-        # Audit sederhana
-        st.subheader("Ringkasan Shift Break")
-        rekap = {n: list(df.loc[n]).count('Break') for n in SEMUA_STAF}
-        st.write(rekap)
+            st.subheader("Audit Jatah Break")
+            rekap = {n: list(df.loc[n]).count('Break') for n in SEMUA_STAF}
+            st.write(rekap)
