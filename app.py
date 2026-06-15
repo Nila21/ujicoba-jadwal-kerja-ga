@@ -126,16 +126,15 @@ def calculate_fitness(ind):
     return penalty
 
 
-def crossover(p1, p2, rate):
+# Tambahkan rate=0.85 di dalam kurung
+def crossover(p1, p2, rate=0.85): 
     if random.random() < rate:
-        # Lakukan penyilangan jika masuk probabilitas
-        pt = random.randint(1, len(p1) - 2) # Dibuat dinamis mengikuti panjang list
+        pt = random.randint(1, len(p1) - 2) 
         c1 = p1[:pt] + p2[pt:]
         c2 = p2[:pt] + p1[pt:]
         return c1, c2
     else:
-        # Jika tidak masuk probabilitas, anak sama persis dengan induknya (kloning)
-        return p1.copy(), p2.copy() 
+        return p1.copy(), p2.copy()
 
 
 def mutate(ind, rate):
