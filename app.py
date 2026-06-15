@@ -180,7 +180,7 @@ with tab1:
                 p2 = population[i3] if penalties[i3] < penalties[i4] else population[i4]
                 
                 # Cukup panggil dengan p1 dan p2 saja
-c1, c2 = crossover(p1, p2) 
+                c1, c2 = crossover(p1, p2) 
 
                 new_pop.append(mutate(c1, mut_rate))
                 if len(new_pop) < pop_size:
