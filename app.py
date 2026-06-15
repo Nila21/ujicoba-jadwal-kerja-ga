@@ -216,7 +216,7 @@ if st.sidebar.button("▶️ Mulai Eksperimen Komputasi"):
 else:
     st.info("👈 Atur parameter di sebelah kiri dan klik 'Mulai Eksperimen Komputasi' untuk melihat hasil algoritma.")
             
-        populasi_baru = []
+    populasi_baru = []
         for _ in range(pop_size):
             k1, k2 = random.choice(populasi), random.choice(populasi)
             f1, _, _ = hitung_fitness(k1)
