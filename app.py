@@ -180,7 +180,7 @@ with tab1:
                 i3, i4 = random.sample(range(pop_size), 2)
                 p2 = population[i3] if penalties[i3] < penalties[i4] else population[i4]
                 
-                c1, c2 = crossover(p1, p2)
+                c1, c2 = crossover(p1, p2, prob_crossover)
                 new_pop.append(mutate(c1, mut_rate))
                 if len(new_pop) < pop_size:
                     new_pop.append(mutate(c2, mut_rate))
