@@ -70,7 +70,10 @@ def create_individual():
 
 def calculate_fitness(ind):
     penalty = 0
-    weight = 10 # Bobot constraint diseragamkan 
+    
+    # Definisi Bobot
+    W_HARD = 100
+    W_SOFT = 50
     
     libur_counts = [0] * num_emp
     
@@ -87,46 +90,37 @@ def calculate_fitness(ind):
             if s == 3:
                 libur_counts[i] += 1
                 
-        # 1. Constraint Libur (Maksimal 1 per hari, Minggu 0)
+        # 1. HARD: Constraint Libur (Minggu 0, Hari biasa max 1)
         if is_sunday and c_libur > 0:
-            penalty += weight * c_libur
+            penalty += W_HARD * c_libur
         elif not is_sunday and c_libur > 1:
-            penalty += weight * (c_libur - 1)
+            penalty += W_HARD * (c_libur - 1)
             
-        # 2. Tidak boleh ada dua PJ di shift yang sama 
+        # 2. HARD: Tidak boleh ada dua PJ di shift yang sama
         pj_shifts = [day_sched[i] for i in range(len(pj_list))]
         for s in [0, 1, 2]:
             if pj_shifts.count(s) > 1:
-                penalty += weight
+                penalty += W_HARD
                 
-        # 3. Distribusi Karyawan per Shift (Pemerataan PJ/Staf)
+        # 3. SOFT: Distribusi Karyawan per Shift
         if c_libur == 0:
-            if c_pagi < 2: penalty += weight
-            if c_siang < 2: penalty += weight
-            if c_break < 2: penalty += weight
+            if c_pagi < 2 or c_siang < 2 or c_break < 2: penalty += W_LOW
         elif c_libur == 1:
-            # Jika ada 1 libur, shift Pagi diprioritaskan
-            if c_pagi < 2: penalty += weight
-            if c_siang < 2: penalty += weight
-            if c_break < 2: penalty += weight
+            if c_pagi < 2 or c_siang < 2 or c_break < 2: penalty += W_LOW
 
-        # 4 & 5. Constraint Hari Berurutan
+        # 4 & 5. SOFT: Constraint Hari Berurutan
         if d < 29:
             next_sched = ind[d+1]
             for i in range(num_emp):
                 s_today = day_sched[i]
                 s_next = next_sched[i]
-                # Tidak boleh Break hari ini -> Break besok
-                if s_today == 2 and s_next == 2:
-                    penalty += weight
-                # Shift Siang hari ini -> tidak boleh Break besok
-                if s_today == 1 and s_next == 2:
-                    penalty += weight
+                if (s_today == 2 and s_next == 2) or (s_today == 1 and s_next == 2):
+                    penalty += W_LOW
                     
-    # 6. Libur 3 hari dalam sebulan per karyawan
+    # 6. HARD: Libur 3 hari dalam sebulan
     for lc in libur_counts:
         if lc != 3:
-            penalty += weight * abs(lc - 3)
+            penalty += W_MED * abs(lc - 3)
             
     return penalty
 
