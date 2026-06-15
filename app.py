@@ -121,7 +121,7 @@ def calculate_fitness(ind):
     # 6. SOFT: Libur 3 hari dalam sebulan (Ganti W_MED jadi W_SOFT)
     for lc in libur_counts:
         if lc != 3:
-            penalty += W_SOFT * abs(lc - 3)
+            penalty += W_HARD * abs(lc - 3)
             
     return penalty
 
