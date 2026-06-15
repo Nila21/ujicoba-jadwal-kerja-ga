@@ -9,10 +9,10 @@ import matplotlib.pyplot as plt
 # --- Konfigurasi Halaman ---
 st.set_page_config(page_title="Optimasi Penjadwalan WSS", layout="wide")
 
-st.title("Aplikasi Optimasi Penjadwalan Shift Kerja")
-st.markdown("Algoritma Genetika - Penjadwalan Shift Karyawan WSS")
+st.title("Aplikasi Optimasi Penjadwalan Shift Kerja (Algoritma Genetika)")
+st.markdown("Berdasarkan aturan penjadwalan toko dan analisis constraint (bobot disamakan).")
 
-# --- INPUT DATA ---
+# --- INPUT DATA KARYAWAN ---
 st.sidebar.header("Pengaturan Karyawan")
 pj_input = st.sidebar.text_input("Nama PJ Toko (pisahkan dengan koma)", "Indah, Andri")
 staf_input = st.sidebar.text_input("Nama Staf Toko (pisahkan dengan koma)", "Tika, Firman, Elan, Nila, Alfi, Novi")
@@ -22,14 +22,16 @@ staf_list = [x.strip() for x in staf_input.split(",") if x.strip()]
 all_emp = pj_list + staf_list
 num_emp = len(all_emp)
 
-# --- PARAMETER ---
-pop_size = st.sidebar.number_input("Ukuran Populasi", 10, 200, 50)
-max_gen = st.sidebar.number_input("Maksimal Generasi", 10, 1000, 300)
+# --- PARAMETER ALGORITMA GENETIKA ---
+st.sidebar.header("Parameter Algoritma Genetika")
+pop_size = st.sidebar.number_input("Ukuran Populasi", min_value=10, max_value=200, value=50)
+max_gen = st.sidebar.number_input("Maksimal Generasi", min_value=10, max_value=1000, value=300)
 mut_rate = st.sidebar.slider("Probabilitas Mutasi", 0.01, 1.0, 0.1)
 
+# Shifts: 0=Pagi, 1=Siang, 2=Break, 3=Libur
 SHIFT_NAMES = {0: "Pagi", 1: "Siang", 2: "Break", 3: "Libur"}
 
-# --- FUNGSI GENETIKA ---
+# --- FUNGSI ALGORITMA GENETIKA ---
 def generate_random_day(day_index):
     is_sunday = (day_index % 7 == 6)
     day_sched = [0] * num_emp
@@ -47,7 +49,8 @@ def generate_random_day(day_index):
             random.shuffle(shifts)
             idx = 0
             for i in range(num_emp):
-                if i == off_idx: day_sched[i] = 3
+                if i == off_idx:
+                    day_sched[i] = 3
                 else:
                     day_sched[i] = shifts[idx]
                     idx += 1
@@ -63,7 +66,7 @@ def create_individual():
 
 def calculate_fitness(ind):
     penalty = 0
-    weight = 10
+    weight = 10 
     libur_counts = [0] * num_emp
     for d in range(30):
         day_sched = ind[d]
@@ -76,13 +79,13 @@ def calculate_fitness(ind):
             if s == 3: libur_counts[i] += 1
         if is_sunday and c_libur > 0: penalty += weight * c_libur
         elif not is_sunday and c_libur > 1: penalty += weight * (c_libur - 1)
-        
         pj_shifts = [day_sched[i] for i in range(len(pj_list))]
         for s in [0, 1, 2]:
             if pj_shifts.count(s) > 1: penalty += weight
-            
-        if c_pagi < 2 or c_siang < 2 or c_break < 2: penalty += weight
-        
+        if c_libur == 0:
+            if c_pagi < 2 or c_siang < 2 or c_break < 2: penalty += weight
+        elif c_libur == 1:
+            if c_pagi < 2 or c_siang < 2 or c_break < 2: penalty += weight
         if d < 29:
             next_sched = ind[d+1]
             for i in range(num_emp):
@@ -94,25 +97,27 @@ def calculate_fitness(ind):
 
 def crossover(p1, p2):
     pt = random.randint(1, 28)
-    return p1[:pt] + p2[pt:], p2[:pt] + p1[pt:]
+    c1 = p1[:pt] + p2[pt:]
+    c2 = p2[:pt] + p1[pt:]
+    return c1, c2
 
 def mutate(ind, rate):
     for d in range(30):
         if random.random() < rate: ind[d] = generate_random_day(d)
     return ind
 
-# --- UI ---
+# --- UI APP ---
 tab1, tab2 = st.tabs(["🖥️ Aplikasi Penjadwalan", "📊 Analisis GA"])
 
-if 'history' not in st.session_state:
-    st.session_state['history'] = []
-
 with tab1:
+    st.header("Buat Jadwal Shift Karyawan")
     if st.button("Mulai Optimasi Jadwal"):
+        progress_bar = st.progress(0)
+        start_time = time.time()
         population = [create_individual() for _ in range(pop_size)]
-        best_ind, best_penalty = None, float('inf')
+        best_ind = None
+        best_penalty = float('inf')
         history = []
-        
         for gen in range(max_gen):
             penalties = [calculate_fitness(ind) for ind in population]
             min_pen = min(penalties)
@@ -120,24 +125,28 @@ with tab1:
                 best_penalty = min_pen
                 best_ind = population[penalties.index(min_pen)]
             history.append(best_penalty)
-            
             new_pop = []
             while len(new_pop) < pop_size:
-                p1, p2 = population[random.randint(0, pop_size-1)], population[random.randint(0, pop_size-1)]
+                i1, i2 = random.sample(range(pop_size), 2)
+                p1 = population[i1] if penalties[i1] < penalties[i2] else population[i2]
+                i3, i4 = random.sample(range(pop_size), 2)
+                p2 = population[i3] if penalties[i3] < penalties[i4] else population[i4]
                 c1, c2 = crossover(p1, p2)
-                new_pop.extend([mutate(c1, mut_rate), mutate(c2, mut_rate)])
-            population = new_pop[:pop_size]
+                new_pop.append(mutate(c1, mut_rate))
+                if len(new_pop) < pop_size: new_pop.append(mutate(c2, mut_rate))
+            population = new_pop
+            if gen % 10 == 0: progress_bar.progress((gen + 1) / max_gen)
         
-        st.success("Optimasi Selesai!")
-        st.session_state['best_ind'] = best_ind
+        exec_time = time.time() - start_time
+        st.success(f"Selesai! Waktu: {exec_time:.2f} detik.")
+        df_data = [{"Hari": f"Hari {d+1}", **{all_emp[i]: SHIFT_NAMES[best_ind[d][i]] for i in range(num_emp)}} for d in range(30)]
+        df = pd.DataFrame(df_data)
+        st.dataframe(df, use_container_width=True)
         st.session_state['history'] = history
+        st.session_state['exec_time'] = exec_time
         st.session_state['best_penalty'] = best_penalty
 
-    if 'best_ind' in st.session_state:
-        df = pd.DataFrame([{"Hari": f"Hari {d+1}", **{all_emp[i]: SHIFT_NAMES[st.session_state['best_ind'][d][i]] for i in range(num_emp)}} for d in range(30)])
-        st.dataframe(df, use_container_width=True)
-
 with tab2:
-    if st.session_state['history']:
+    if 'history' in st.session_state:
         st.line_chart(st.session_state['history'])
         st.write(f"Penalti Akhir: {st.session_state['best_penalty']}")
