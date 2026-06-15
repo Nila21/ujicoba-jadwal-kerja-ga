@@ -21,7 +21,7 @@ KARYAWAN = [
 ]
 
 NUM_KARYAWAN = len(KARYAWAN)
-NUM_HARI = 7  # Senin s.d Minggu
+NUM_HARI = 30  # Senin s.d Minggu
 
 # Kode Shift sesuai skripsi: 0=Libur, 1=Pagi, 2=Siang, 3=Break
 KODE_SHIFT = [0, 1, 2, 3]
