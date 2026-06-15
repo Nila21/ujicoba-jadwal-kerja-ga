@@ -68,13 +68,13 @@ def generate_random_day(day_index):
 def create_individual():
     return [generate_random_day(d) for d in range(30)]
 
+# --- DEFINISI BOBOT (Letakkan di bagian atas file) ---
+W_HARD = 100
+W_SOFT = 50
+
+# --- FUNGSI ALGORITMA GENETIKA ---
 def calculate_fitness(ind):
     penalty = 0
-    
-    # Definisi Bobot
-    W_HARD = 100
-    W_SOFT = 50
-    
     libur_counts = [0] * num_emp
     
     for d in range(30):
@@ -88,9 +88,10 @@ def calculate_fitness(ind):
         
         for i, s in enumerate(day_sched):
             if s == 3:
-                libur_counts[i] += 1
+                # PERBAIKAN: Gunakan [i] agar setiap karyawan dihitung masing-masing
+                libur_counts[i] += 1 
                 
-        # 1. HARD: Constraint Libur (Minggu 0, Hari biasa max 1)
+        # 1. HARD: Constraint Libur
         if is_sunday and c_libur > 0:
             penalty += W_HARD * c_libur
         elif not is_sunday and c_libur > 1:
@@ -102,27 +103,28 @@ def calculate_fitness(ind):
             if pj_shifts.count(s) > 1:
                 penalty += W_HARD
                 
-        # 3. SOFT: Distribusi Karyawan per Shift
+        # 3. SOFT: Distribusi Karyawan per Shift (Ganti W_LOW jadi W_SOFT)
         if c_libur == 0:
-            if c_pagi < 2 or c_siang < 2 or c_break < 2: penalty += W_LOW
+            if c_pagi < 2 or c_siang < 2 or c_break < 2: penalty += W_SOFT
         elif c_libur == 1:
-            if c_pagi < 2 or c_siang < 2 or c_break < 2: penalty += W_LOW
+            if c_pagi < 2 or c_siang < 2 or c_break < 2: penalty += W_SOFT
 
-        # 4 & 5. SOFT: Constraint Hari Berurutan
+        # 4 & 5. SOFT: Constraint Hari Berurutan (Ganti W_LOW jadi W_SOFT)
         if d < 29:
             next_sched = ind[d+1]
             for i in range(num_emp):
                 s_today = day_sched[i]
                 s_next = next_sched[i]
                 if (s_today == 2 and s_next == 2) or (s_today == 1 and s_next == 2):
-                    penalty += W_LOW
+                    penalty += W_SOFT
                     
-    # 6. HARD: Libur 3 hari dalam sebulan
+    # 6. SOFT: Libur 3 hari dalam sebulan (Ganti W_MED jadi W_SOFT)
     for lc in libur_counts:
         if lc != 3:
-            penalty += W_MED * abs(lc - 3)
+            penalty += W_SOFT * abs(lc - 3)
             
     return penalty
+
 
 def crossover(p1, p2):
     pt = random.randint(1, 28)
