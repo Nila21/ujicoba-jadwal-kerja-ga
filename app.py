@@ -204,7 +204,7 @@ if st.button("🚀 Optimasi Jadwal (Mulai GA)", key="run_ga"):
             if val == 'Break': return 'background-color: #fff2cc; color: black;'
             return ''
             
-        styled_df = df.style.applymap(color_map, subset=[f"Hari {i+1}" for i in range(30)])
+        styled_df = df.style.map(color_map, subset=[f"Hari {i+1}" for i in range(30)])
         
         st.success(f"Selesai! Sisa Penalti: {best_penalty} (Fitness: {best_fitness})")
         st.dataframe(styled_df, use_container_width=True)
