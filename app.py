@@ -295,7 +295,7 @@ with tab2:
     waktu_selesai = time.time()
     waktu_komputasi = round(waktu_selesai - waktu_mulai, 3)
     
-        return jadwal_awal, pen_awal, pel_awal, jadwal_terbaik, fitness_terbaik, penalti_terbaik, pelanggaran_terbaik, riwayat_fitness, waktu_komputasi
+    return jadwal_awal, pen_awal, pel_awal, jadwal_terbaik, fitness_terbaik, penalti_terbaik, pelanggaran_terbaik, riwayat_fitness, waktu_komputasi
 
 # ==========================================
 # 4. TAMPILAN DASHBOARD PENELITIAN (UI)
